@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="nl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Yaniv" />
+  <meta name="theme-color" content="#020617" />
+  <title>Yaniv Scorekeeper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 select-none">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const STORAGE_KEY = 'yaniv_scorekeeper_github_v1';
+
+    const PRESET_PLAYERS = [
+      { id: 'shirley', name: 'Shirley', color: 'from-pink-500 to-rose-500' },
+      { id: 'annelies', name: 'Annelies', color: 'from-purple-500 to-indigo-500' },
+      { id: 'wichard', name: 'Wichard', color: 'from-blue-500 to-cyan-500' },
+      { id: 'mathijs', name: 'Mathijs', color: 'from-emerald-500 to-teal-500' },
+      { id: 'michiel', name: 'Michiel', color: 'from-amber-500 to-orange-500' }
+    ];
+
+    const ScreenEventAnimation = ({ event }) => {
+      if (!event) return null;
+      const particles = Array.from({ length: 28 }, (_, i) => ({
+        id: i,
+        left: `${(i * 3.7) % 100}%`,
+        delay: `${(i % 7) * 0.08}s`,
+        duration: `${1.6 + (i % 5) * 0.25}s`,
+        size: 16 + (i % 4) * 6
+      }));
+
+      return (
+        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden flex items-center justify-center">
+          <style>{`
+            @keyframes bannerFly {
+              0% { transform: scale(0.4) translateY(60px); opacity: 0; }
+              18% { transform: scale(1.06) translateY(0); opacity: 1; }
+              28% { transform: scale(1) translateY(0); opacity: 1; }
+              80% { transform: scale(1) translateY(0); opacity: 1; }
+              100% { transform: scale(0.85) translateY(-50px); opacity: 0; }
+            }
+            @keyframes particleDrop {
+              0% { transform: translateY(-10vh) rotate(0deg) scale(0.8); opacity: 1; }
+              80% { opacity: 0.9; }
+              100% { transform: translateY(105vh) rotate(540deg) scale(1.1); opacity: 0; }
+            }
+            @keyframes screenFlash {
+              0% { opacity: 0; }
+              15% { opacity: 0.45; }
+              30% { opacity: 0.1; }
+              45% { opacity: 0.35; }
+              100% { opacity: 0; }
+            }
+            @keyframes screenShake {
+              0%, 100% { transform: translate(0, 0); }
+              15% { transform: translate(-10px, 6px); }
+              30% { transform: translate(10px, -6px); }
+              45% { transform: translate(-8px, -4px); }
+              60% { transform: translate(8px, 4px); }
+              75% { transform: translate(-4px, 2px); }
+            }
+            .anim-banner-fly { animation: bannerFly 2.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .anim-banner-long { animation: bannerFly 4.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .anim-flash { animation: screenFlash 1.4s ease-out forwards; }
+            .anim-shake { animation: screenShake 0.6s ease-in-out; }
+          `}</style>
+
+          {event.type === 'assaf' && <div className="absolute inset-0 bg-amber-500 anim-flash" />}
+          {event.type === 'eliminated' && <div className="absolute inset-0 bg-rose-600 anim-flash" />}
+          {event.type === 'champion' && <div className="absolute inset-0 bg-gradient-to-t from-amber-500/30 via-transparent to-amber-400/20 anim-flash" />}
+          {event.type === 'round' && <div className="absolute inset-0 bg-emerald-500/20 anim-flash" />}
+
+          {particles.map(p => {
+            let symbol = '✨';
+            if (event.type === 'round') symbol = ['🎉', '🃏', '✨', '💚'][p.id % 4];
+            if (event.type === 'assaf') symbol = ['⚡', '🔥', '💥', '😱'][p.id % 4];
+            if (event.type === 'eliminated') symbol = ['💀', '🪦', '🔥', '❌'][p.id % 4];
+            if (event.type === 'champion') symbol = ['👑', '🏆', '🎉', '⭐'][p.id % 4];
+            return (
+              <div
+                key={p.id}
+                style={{
+                  left: p.left,
+                  top: '-40px',
+                  fontSize: `${p.size}px`,
+                  animation: `particleDrop ${p.duration} ease-in ${p.delay} forwards`
+                }}
+                className="absolute select-none"
+              >
+                {symbol}
+              </div>
+            );
+          })}
+
+          {event.type === 'round' && (
+            <div className="anim-banner-fly flex flex-col items-center text-center px-8 py-5 rounded-3xl bg-emerald-950/90 border-2 border-emerald-400 shadow-[0_0_60px_rgba(16,185,129,0.6)] backdrop-blur-md">
+              <div className="text-4xl animate-bounce mb-1">🏆</div>
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-300">Ronde {event.roundNumber}</span>
+              <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">YANIV VOOR {event.winner.toUpperCase()}!</div>
+              {event.bonuses?.length > 0 && (
+                <div className="mt-2 px-3 py-1 rounded-full bg-indigo-500/30 border border-indigo-400 text-xs font-bold text-indigo-200">
+                  ✨ Bonus ({event.bonusLabel}) voor {event.bonuses.join(', ')}!
+                </div>
+              )}
+            </div>
+          )}
+
+          {event.type === 'assaf' && (
+            <div className="anim-banner-fly anim-shake flex flex-col items-center text-center px-8 py-6 rounded-3xl bg-amber-950/95 border-2 border-amber-400 shadow-[0_0_70px_rgba(245,158,11,0.75)] backdrop-blur-md">
+              <div className="text-5xl animate-bounce mb-1">⚡</div>
+              <div className="text-4xl sm:text-5xl font-black text-amber-300 tracking-tight">ASSAF! ⚡</div>
+              <div className="text-base sm:text-lg font-extrabold text-white mt-1">{event.victim} krijgt +{event.penalty} strafpunten!</div>
+              <div className="text-xs font-bold text-emerald-300 mt-1">{event.winner} had minder punten ({event.winnerPoints > 0 ? `+${event.winnerPoints} pt` : '0 pt'})</div>
+            </div>
+          )}
+
+          {event.type === 'eliminated' && (
+            <div className="anim-banner-fly anim-shake flex flex-col items-center text-center px-8 py-6 rounded-3xl bg-rose-950/95 border-2 border-rose-500 shadow-[0_0_80px_rgba(244,63,94,0.8)] backdrop-blur-md">
+              <div className="text-5xl animate-pulse mb-1">💀</div>
+              <span className="text-xs font-black uppercase tracking-widest text-rose-300">Boven de {event.limit} punten</span>
+              <div className="text-3xl sm:text-4xl font-black text-white mt-0.5">{event.names.join(' & ').toUpperCase()} {event.names.length > 1 ? 'ZIJN' : 'IS'} DOOD! 💀</div>
+            </div>
+          )}
+
+          {event.type === 'champion' && (
+            <div className="anim-banner-long flex flex-col items-center text-center px-10 py-7 rounded-3xl bg-gradient-to-b from-amber-900/95 to-slate-950/95 border-2 border-amber-300 shadow-[0_0_90px_rgba(251,191,36,0.85)] backdrop-blur-md">
+              <div className="text-6xl animate-bounce mb-2">👑</div>
+              <span className="text-xs font-black uppercase tracking-widest text-amber-300">Potje Afgelopen • Kampioen!</span>
+              <div className="text-4xl sm:text-5xl font-black text-white mt-1">{event.champion?.name} WINT! 🏆</div>
+              <div className="text-sm font-bold text-amber-200 mt-1">Eindscore: {event.champion?.score} punten</div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    function App() {
+      const saved = (() => {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        } catch {
+          return {};
+        }
+      })();
+
+      const [gameStarted, setGameStarted] = useState(saved.gameStarted ?? false);
+      const [selectedPlayerIds, setSelectedPlayerIds] = useState(saved.selectedPlayerIds ?? ['shirley', 'annelies', 'wichard', 'mathijs', 'michiel']);
+      const [maxScoreLimit, setMaxScoreLimit] = useState(saved.maxScoreLimit ?? 200);
+      const [eliminationBoundary, setEliminationBoundary] = useState(saved.eliminationBoundary ?? 'over');
+      const [gameEndMode, setGameEndMode] = useState(saved.gameEndMode ?? 'last_standing');
+      const [yanivCallLimit, setYanivCallLimit] = useState(saved.yanivCallLimit ?? 7);
+      const [enableHalvingRule, setEnableHalvingRule] = useState(saved.enableHalvingRule ?? true);
+      const [halvingType, setHalvingType] = useState(saved.halvingType ?? 'half');
+      const [halvingTrigger, setHalvingTrigger] = useState(saved.halvingTrigger ?? 'every50');
+      const [assafPenalty, setAssafPenalty] = useState(saved.assafPenalty ?? 30);
+      const [assafWinnerGetsHandPoints, setAssafWinnerGetsHandPoints] = useState(saved.assafWinnerGetsHandPoints ?? true);
+      const [rounds, setRounds] = useState(saved.rounds ?? []);
+      const [pastGames, setPastGames] = useState(saved.pastGames ?? []);
+
+      const [activeTab, setActiveTab] = useState('round');
+      const [winnerId, setWinnerId] = useState(null);
+      const [assafPlayerId, setAssafPlayerId] = useState(null);
+      const [handScores, setHandScores] = useState({});
+      const [confirmResetModal, setConfirmResetModal] = useState(false);
+      const [eventAnimation, setEventAnimation] = useState(null);
+      const animTimeoutRef = useRef(null);
+
+      useEffect(() => {
+        const payload = {
+          gameStarted, selectedPlayerIds, maxScoreLimit, eliminationBoundary,
+          gameEndMode, yanivCallLimit, enableHalvingRule, halvingType,
+          halvingTrigger, assafPenalty, assafWinnerGetsHandPoints, rounds, pastGames
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }, [gameStarted, selectedPlayerIds, maxScoreLimit, eliminationBoundary, gameEndMode, yanivCallLimit, enableHalvingRule, halvingType, halvingTrigger, assafPenalty, assafWinnerGetsHandPoints, rounds, pastGames]);
+
+      const triggerScreenAnimation = (animObj, duration = 2700) => {
+        if (animTimeoutRef.current) clearTimeout(animTimeoutRef.current);
+        setEventAnimation(animObj);
+        animTimeoutRef.current = setTimeout(() => setEventAnimation(null), duration);
+      };
+
+      const activePlayers = PRESET_PLAYERS.filter(p => selectedPlayerIds.includes(p.id));
+
+      const calculateStandings = (roundsList = rounds) => {
+        const totals = {};
+        const eliminatedInRound = {};
+        selectedPlayerIds.forEach(id => { totals[id] = 0; });
+        const divisor = halvingTrigger === 'every100' ? 100 : 50;
+
+        const enrichedRounds = roundsList.map((round, rIdx) => {
+          const roundResult = { ...round, afterTotals: {}, bonusEvents: {}, newlyEliminated: [] };
+          selectedPlayerIds.forEach(pid => {
+            if (eliminatedInRound[pid]) {
+              roundResult.afterTotals[pid] = totals[pid];
+              return;
+            }
+            const prevTotal = totals[pid] || 0;
+            const added = round.scores[pid] ?? 0;
+            let newTotal = prevTotal + added;
+            const diesExactlyOnLimit = maxScoreLimit > 0 && eliminationBoundary === 'at_or_over' && newTotal >= maxScoreLimit;
+
+            if (enableHalvingRule && !diesExactlyOnLimit && added > 0 && newTotal > 0 && newTotal % divisor === 0) {
+              if (halvingType === 'subtract50') {
+                newTotal = Math.max(0, newTotal - 50);
+                roundResult.bonusEvents[pid] = '-50 Bonus!';
+              } else {
+                newTotal = Math.floor(newTotal / 2);
+                roundResult.bonusEvents[pid] = '÷2 Bonus!';
+              }
+            }
+            totals[pid] = newTotal;
+            roundResult.afterTotals[pid] = newTotal;
+
+            const isEliminatedNow = maxScoreLimit > 0 && (
+              eliminationBoundary === 'at_or_over' ? newTotal >= maxScoreLimit : newTotal > maxScoreLimit
+            );
+            if (isEliminatedNow) {
+              eliminatedInRound[pid] = rIdx + 1;
+              roundResult.newlyEliminated.push(pid);
+            }
+          });
+          return roundResult;
+        });
+
+        const playerStandings = activePlayers.map(player => ({
+          ...player,
+          score: totals[player.id] || 0,
+          isOut: Boolean(eliminatedInRound[player.id]),
+          eliminatedRound: eliminatedInRound[player.id] || null,
+          roundsWon: roundsList.filter(r => r.winnerId === player.id).length
+        })).sort((a, b) => (a.isOut !== b.isOut ? (a.isOut ? 1 : -1) : a.score - b.score));
+
+        return { totals, enrichedRounds, playerStandings, eliminatedInRound };
+      };
+
+      const { totals, enrichedRounds, playerStandings, eliminatedInRound } = calculateStandings();
+      const alivePlayers = activePlayers.filter(p => !playerStandings.find(s => s.id === p.id)?.isOut);
+      const totalEliminatedCount = Object.keys(eliminatedInRound).length;
+      const isGameOver = maxScoreLimit > 0 && rounds.length > 0 && (gameEndMode === 'first_out' ? totalEliminatedCount >= 1 : alivePlayers.length <= 1);
+      const championPlayer = isGameOver ? (playerStandings.find(p => !p.isOut) || playerStandings[0]) : null;
+
+      const handleSaveRound = () => {
+        if (!winnerId || !alivePlayers.some(p => p.id === winnerId)) return;
+        const isAssafRound = Boolean(assafPlayerId && assafPlayerId !== winnerId);
+        const roundScores = {};
+        alivePlayers.forEach(player => {
+          const pid = player.id;
+          const baseHand = parseInt(handScores[pid], 10) || 0;
+          if (pid === winnerId) {
+            roundScores[pid] = (isAssafRound && assafWinnerGetsHandPoints) ? baseHand : 0;
+          } else {
+            roundScores[pid] = baseHand + (pid === assafPlayerId ? assafPenalty : 0);
+          }
+        });
+
+        const newRound = {
+          id: Date.now(),
+          roundNumber: rounds.length + 1,
+          winnerId,
+          assafPlayerId: isAssafRound ? assafPlayerId : null,
+          scores: roundScores,
+          timestamp: new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        const updatedRounds = [...rounds, newRound];
+        const nextCalc = calculateStandings(updatedRounds);
+        const lastEnriched = nextCalc.enrichedRounds[nextCalc.enrichedRounds.length - 1];
+        const newlyDeadNames = (lastEnriched?.newlyEliminated || []).map(id => PRESET_PLAYERS.find(p => p.id === id)?.name).filter(Boolean);
+        const remainingAlive = activePlayers.filter(p => !nextCalc.eliminatedInRound[p.id]);
+        const nextTotalEliminated = Object.keys(nextCalc.eliminatedInRound).length;
+        const willGameEnd = maxScoreLimit > 0 && (gameEndMode === 'first_out' ? nextTotalEliminated >= 1 : remainingAlive.length <= 1);
+
+        const winnerName = PRESET_PLAYERS.find(p => p.id === winnerId)?.name || 'Winnaar';
+        const assafVictimName = isAssafRound ? PRESET_PLAYERS.find(p => p.id === assafPlayerId)?.name : null;
+        const bonusNames = Object.keys(lastEnriched?.bonusEvents || {}).map(id => PRESET_PLAYERS.find(p => p.id === id)?.name).filter(Boolean);
+
+        if (willGameEnd) {
+          const champ = nextCalc.playerStandings.find(s => !s.isOut) || nextCalc.playerStandings[0];
+          const finishedGameSummary = {
+            id: Date.now(),
+            date: new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+            winnerName: champ?.name || 'Onbekend',
+            winnerScore: champ?.score ?? 0,
+            totalRounds: updatedRounds.length,
+            standings: nextCalc.playerStandings.map(s => ({ name: s.name, score: s.score, isOut: s.isOut }))
+          };
+          setPastGames([finishedGameSummary, ...pastGames].slice(0, 20));
+          triggerScreenAnimation({ type: 'champion', champion: champ, totalRounds: updatedRounds.length }, 4200);
+        } else if (newlyDeadNames.length > 0) {
+          triggerScreenAnimation({ type: 'eliminated', names: newlyDeadNames, limit: maxScoreLimit, assafVictim: assafVictimName }, 2800);
+        } else if (isAssafRound) {
+          triggerScreenAnimation({ type: 'assaf', victim: assafVictimName, winner: winnerName, penalty: assafPenalty, winnerPoints: roundScores[winnerId] }, 2700);
+        } else {
+          triggerScreenAnimation({ type: 'round', roundNumber: updatedRounds.length, winner: winnerName, bonuses: bonusNames, bonusLabel: halvingType === 'half' ? '÷2' : '-50' }, 2400);
+        }
+
+        setRounds(updatedRounds);
+        setWinnerId(null);
+        setAssafPlayerId(null);
+        setHandScores({});
+      };
+
+      const resetGame = (goToSetup = true) => {
+        setRounds([]);
+        setHandScores({});
+        setAssafPlayerId(null);
+        setWinnerId(null);
+        setConfirmResetModal(false);
+        if (goToSetup) setGameStarted(false);
+      };
+
+      if (!gameStarted) {
+        return (
+          <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 flex items-center justify-center">
+            <div className="max-w-xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-2xl">
+              <div>
+                <h1 className="text-2xl font-black text-white">🃏 Yaniv Scorekeeper</h1>
+                <p className="text-xs text-slate-400">Kies de spelers en regels voor dit potje</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-indigo-400">1. Spelers ({selectedPlayerIds.length})</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PRESET_PLAYERS.map(p => {
+                    const active = selectedPlayerIds.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          if (active && selectedPlayerIds.length <= 2) return;
+                          setSelectedPlayerIds(active ? selectedPlayerIds.filter(i => i !== p.id) : [...selectedPlayerIds, p.id]);
+                        }}
+                        className={`py-3 px-3 rounded-2xl text-sm font-bold flex items-center justify-between border ${
+                          active ? `bg-gradient-to-r ${p.color} text-white border-transparent` : 'bg-slate-950 text-slate-400 border-slate-800'
+                        }`}
+                      >
+                        <span>{p.name}</span>
+                        <span>{active ? '✓' : '+'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                <label className="text-xs font-bold uppercase text-indigo-400 block">2. Afvalgrens & Varianten</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[100, 150, 200, 0].map(lim => (
+                    <button
+                      key={lim}
+                      onClick={() => setMaxScoreLimit(lim)}
+                      className={`py-2 rounded-xl text-xs font-bold border ${maxScoreLimit === lim ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
+                    >
+                      {lim === 0 ? 'Geen' : `${lim} pt`}
+                    </button>
+                  ))}
+                </div>
+         
