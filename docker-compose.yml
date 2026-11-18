@@ -1,0 +1,17 @@
+services:
+  yaniv:
+    build: .
+    image: yaniv-scorekeeper:latest
+    container_name: yaniv-scorekeeper
+    restart: unless-stopped
+    ports:
+      # Host-poort:containerpoort. Laat je reverse proxy (HTTPS) naar deze poort wijzen.
+      - "8080:8080"
+    environment:
+      # Optioneel: PIN die nodig is om op te slaan (meekijken kan altijd).
+      APP_PIN: ${APP_PIN:-}
+    volumes:
+      - yaniv-data:/data
+
+volumes:
+  yaniv-data:
