@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BUILT_IN_PRESETS, normalizeRules, rulesEqual } from '../lib/rules';
 import { activePresets, upsertPreset, useStore } from '../lib/store';
 import type { RulePreset, Rules } from '../lib/types';
-import { Button, Label, NumberInput, Segmented, Toggle } from './ui';
+import { Button, Label, NumberInput, Segmented, TextInput, Toggle } from './ui';
 
 function NumberRow({
   label, hint, value, onChange, presets, disabled, max
@@ -15,35 +15,35 @@ function NumberRow({
   disabled?: boolean;
   max?: number;
 }) {
-  const [text, setText] = useState<'' | null>(null);
+  const [empty, setEmpty] = useState(false);
   return (
-    <div className="space-y-2">
+    <div className="border-b border-line-soft py-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm text-slate-200">{label}</div>
-          {hint && <div className="text-[11px] text-slate-500">{hint}</div>}
+          <div className="text-[15px] font-semibold">{label}</div>
+          {hint && <div className="text-xs text-muted">{hint}</div>}
         </div>
         <NumberInput
           ariaLabel={label}
           className="w-24"
           disabled={disabled}
           max={max}
-          value={text === '' ? '' : String(value)}
+          value={empty ? '' : String(value)}
           onChange={v => {
-            setText(v === '' ? '' : null);
+            setEmpty(v === '');
             if (v !== '') onChange(Number(v));
           }}
         />
       </div>
       {presets && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="mt-2 flex gap-px">
           {presets.map(p => (
             <button
               key={p.value}
               type="button"
               disabled={disabled}
-              onClick={() => { setText(null); onChange(p.value); }}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${value === p.value ? 'border-indigo-400 bg-indigo-600 text-white' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
+              onClick={() => { setEmpty(false); onChange(p.value); }}
+              className={`border px-3 py-1.5 font-mono text-xs ${value === p.value ? 'border-fg bg-fg text-bg' : 'border-line text-muted'}`}
             >
               {p.label}
             </button>
@@ -54,20 +54,28 @@ function NumberRow({
   );
 }
 
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="pt-5">
+      <div className="border-b border-line pb-2"><Label>{title}</Label></div>
+      <div className="space-y-3 pt-1">{children}</div>
+    </div>
+  );
+}
+
 export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onChange: (r: Rules) => void; disabled?: boolean }) {
   const set = <K extends keyof Rules>(k: K, v: Rules[K]) => onChange(normalizeRules({ ...rules, [k]: v }));
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-3">
-        <Label>Afvallen &amp; einde</Label>
+    <div>
+      <Group title="Afvallen en einde">
         <NumberRow
           label="Afvalgrens"
           hint="0 = geen grens, potje handmatig beëindigen"
           value={rules.scoreLimit}
           disabled={disabled}
           onChange={v => set('scoreLimit', v)}
-          presets={[100, 150, 200, 0].map(v => ({ value: v, label: v ? `${v}` : 'Geen' }))}
+          presets={[100, 150, 200, 0].map(v => ({ value: v, label: v ? `${v}` : 'geen' }))}
         />
         {rules.scoreLimit > 0 && (
           <>
@@ -91,10 +99,9 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
             />
           </>
         )}
-      </div>
+      </Group>
 
-      <div className="space-y-3">
-        <Label>Yaniv roepen</Label>
+      <Group title="Yaniv roepen">
         <NumberRow
           label="Maximaal in hand"
           hint="Yaniv mag bij dit aantal punten of minder"
@@ -113,10 +120,9 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
             { value: 'block', label: 'Blokkeren' }
           ]}
         />
-      </div>
+      </Group>
 
-      <div className="space-y-3">
-        <Label>Bonus bij veelvoud</Label>
+      <Group title="Bonus bij veelvoud">
         <Toggle disabled={disabled} checked={rules.halvingEnabled} onChange={v => set('halvingEnabled', v)} label="Bonus als je score precies op een veelvoud uitkomt" />
         {rules.halvingEnabled && (
           <>
@@ -125,7 +131,7 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
               value={rules.halvingType}
               onChange={v => set('halvingType', v)}
               options={[
-                { value: 'half', label: 'Halveren ÷2' },
+                { value: 'half', label: 'Halveren (÷2)' },
                 { value: 'subtract50', label: '50 aftrekken' }
               ]}
             />
@@ -138,10 +144,9 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
             />
           </>
         )}
-      </div>
+      </Group>
 
-      <div className="space-y-3">
-        <Label>Assaf</Label>
+      <Group title="Assaf">
         <NumberRow
           label="Strafpunten Yaniv-roeper"
           value={rules.assafPenalty}
@@ -154,14 +159,13 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
           value={rules.assafWinnerGetsHandPoints}
           onChange={v => set('assafWinnerGetsHandPoints', v)}
           options={[
-            { value: false, label: 'Assaf-roeper: 0 pt (officieel)' },
-            { value: true, label: 'Assaf-roeper: eigen hand' }
+            { value: false, label: 'Assaf-roeper 0 punten (officieel)' },
+            { value: true, label: 'Assaf-roeper eigen hand' }
           ]}
         />
-      </div>
+      </Group>
 
-      <div className="space-y-3">
-        <Label>Invoercontrole</Label>
+      <Group title="Invoercontrole">
         <NumberRow
           label="Max. punten per hand"
           hint="Hogere invoer wordt als tikfout geweigerd"
@@ -169,7 +173,7 @@ export function RulesEditor({ rules, onChange, disabled }: { rules: Rules; onCha
           disabled={disabled}
           onChange={v => set('maxHandPoints', v)}
         />
-      </div>
+      </Group>
     </div>
   );
 }
@@ -182,24 +186,21 @@ export function PresetPicker({ rules, onPick }: { rules: Rules; onPick: (r: Rule
   const [naming, setNaming] = useState<string | null>(null);
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {presets.map(p => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onPick(normalizeRules(p.rules))}
-            className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${match?.id === p.id ? 'border-emerald-400 bg-emerald-600/25 text-emerald-200' : 'border-slate-800 bg-slate-950 text-slate-300'}`}
-          >
-            {match?.id === p.id ? '✓ ' : ''}{p.name}
-          </button>
-        ))}
-        {!match && naming === null && (
-          <button type="button" onClick={() => setNaming('')} className="rounded-xl border border-dashed border-slate-600 px-3 py-1.5 text-xs font-bold text-slate-300">
-            + Opslaan als regelset
-          </button>
-        )}
-      </div>
+    <div className="space-y-3">
+      <Segmented
+        value={match?.id ?? '__custom'}
+        onChange={id => { const p = presets.find(x => x.id === id); if (p) onPick(normalizeRules(p.rules)); }}
+        options={[
+          ...presets.map(p => ({ value: p.id, label: p.name })),
+          ...(match ? [] : [{ value: '__custom', label: 'Aangepast' }])
+        ]}
+        columns={Math.min(3, presets.length + (match ? 0 : 1))}
+      />
+      {!match && naming === null && (
+        <button type="button" onClick={() => setNaming('')} className="text-[13px] font-semibold text-accent">
+          Deze regels opslaan als regelset
+        </button>
+      )}
       {naming !== null && (
         <form
           className="flex gap-2"
@@ -210,16 +211,9 @@ export function PresetPicker({ rules, onPick }: { rules: Rules; onPick: (r: Rule
             setNaming(null);
           }}
         >
-          <input
-            autoFocus
-            value={naming}
-            onChange={e => setNaming(e.target.value)}
-            placeholder="Naam, bijv. Vakantieregels"
-            maxLength={40}
-            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
-          />
+          <TextInput autoFocus value={naming} onChange={e => setNaming(e.target.value)} placeholder="Naam, bijv. Vakantieregels" maxLength={40} className="flex-1" />
           <Button type="submit" disabled={!naming.trim()}>Opslaan</Button>
-          <Button type="button" variant="ghost" onClick={() => setNaming(null)}>✕</Button>
+          <Button type="button" variant="ghost" onClick={() => setNaming(null)}>Annuleer</Button>
         </form>
       )}
     </div>

@@ -5,13 +5,27 @@ services:
     container_name: yaniv-scorekeeper
     restart: unless-stopped
     ports:
-      # Host-poort:containerpoort. Laat je reverse proxy (HTTPS) naar deze poort wijzen.
-      - "8080:8080"
+      # Alleen bereikbaar op de server zelf; de tunnel (of je eigen proxy) maakt hem publiek.
+      # Wil je hem ook op je thuisnetwerk via http://server:8080, verander dit dan in "8080:8080".
+      - "127.0.0.1:8080:8080"
     environment:
       # Optioneel: PIN die nodig is om op te slaan (meekijken kan altijd).
       APP_PIN: ${APP_PIN:-}
     volumes:
       - yaniv-data:/data
+
+  # Cloudflare Tunnel: start met `docker compose --profile tunnel up -d`.
+  # Het token komt uit het Cloudflare-dashboard (zie DEPLOY.md) en staat in .env.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: yaniv-tunnel
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - yaniv
 
 volumes:
   yaniv-data:

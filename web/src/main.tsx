@@ -1,8 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import { startBackgroundSync } from './lib/store';
+import { startBackgroundSync, watchSystemTheme } from './lib/store';
 import './index.css';
+
+watchSystemTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

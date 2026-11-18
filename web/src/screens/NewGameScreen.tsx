@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PresetPicker, RulesEditor } from '../components/RulesEditor';
-import { Avatar, Button, Card, Label, Page, TopBar } from '../components/ui';
+import { Button, Icon, Page, Section, Swatch, TextInput, TopBar } from '../components/ui';
 import { describeRules } from '../lib/rules';
 import { navigate } from '../lib/router';
 import { activePlayers, createGame, upsertPlayer, useStore } from '../lib/store';
@@ -32,12 +32,11 @@ export function NewGameScreen() {
 
   return (
     <>
-      <TopBar title="Nieuw potje" back="/" />
+      <TopBar kicker="Nieuw" title="Potje opzetten" back="/" />
       <Page>
-        <Card className="space-y-3">
-          <Label>1 · Spelers ({selected.length}) · volgorde = speelvolgorde</Label>
-          {players.length === 0 && <p className="text-sm text-slate-400">Nog geen spelers. Voeg ze hieronder toe.</p>}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <Section title="Spelers" aside={`${selected.length} gekozen`}>
+          {players.length === 0 && <p className="py-3 text-sm text-muted">Nog geen spelers. Voeg ze hieronder toe.</p>}
+          <div className="grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-3">
             {players.map(p => {
               const pos = selected.indexOf(p.id);
               const active = pos >= 0;
@@ -45,50 +44,42 @@ export function NewGameScreen() {
                 <button
                   key={p.id}
                   onClick={() => toggle(p.id)}
-                  className={`flex items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-sm font-bold ${
-                    active ? 'border-transparent text-white' : 'border-slate-800 bg-slate-950 text-slate-400'
-                  }`}
-                  style={active ? { background: `linear-gradient(90deg, ${p.color}, ${p.color}aa)` } : undefined}
+                  aria-pressed={active}
+                  className={`flex min-h-12 items-center justify-between gap-2 px-3 text-left text-[15px] font-semibold ${active ? 'bg-fg text-bg' : 'bg-bg text-muted'}`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    {!active && <Avatar name={p.name} color={p.color} size={22} />}
+                    <Swatch color={p.color} size={8} />
                     <span className="truncate">{p.name}</span>
                   </span>
-                  <span className="shrink-0">{active ? pos + 1 : '+'}</span>
+                  <span className="font-mono text-xs">{active ? String(pos + 1).padStart(2, '0') : ''}</span>
                 </button>
               );
             })}
           </div>
-          <form className="flex gap-2" onSubmit={e => { e.preventDefault(); addPlayer(); }}>
-            <input
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="Nieuwe speler"
-              maxLength={24}
-              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
-            />
-            <Button type="submit" variant="secondary" disabled={!newName.trim()}>＋ Toevoegen</Button>
+          <form className="mt-3 flex" onSubmit={e => { e.preventDefault(); addPlayer(); }}>
+            <TextInput value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nieuwe speler" maxLength={24} className="flex-1 border-r-0" />
+            <Button type="submit" variant="secondary" disabled={!newName.trim()} className="disabled:text-faint"><Icon name="plus" size={16} /> Toevoegen</Button>
           </form>
-        </Card>
+          <p className="mt-2 text-xs text-muted">De volgorde waarin je kiest is de speelvolgorde.</p>
+        </Section>
 
-        <Card className="space-y-3">
-          <Label>2 · Regels</Label>
+        <Section title="Regels">
           <PresetPicker rules={rules} onPick={setRules} />
-          <ul className="space-y-1 text-xs text-slate-400">
-            {describeRules(rules).map(l => <li key={l}>• {l}</li>)}
+          <ul className="mt-3">
+            {describeRules(rules).map(l => <li key={l} className="border-b border-line-soft py-2 text-[13px] text-muted">{l}</li>)}
           </ul>
-          <Button variant="secondary" className="w-full" onClick={() => setShowRules(v => !v)}>
-            {showRules ? 'Regels inklappen' : '⚙️ Regels aanpassen'}
+          <Button variant="secondary" className="mt-3 w-full" onClick={() => setShowRules(v => !v)}>
+            {showRules ? 'Regels inklappen' : 'Regels aanpassen'}
           </Button>
           {showRules && <RulesEditor rules={rules} onChange={setRules} />}
-        </Card>
+        </Section>
 
         <Button
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 py-4 text-base"
+          className="mt-8 w-full py-4 text-[15px]"
           disabled={selected.length < 2}
           onClick={() => navigate(`/g/${createGame(selected, rules)}`, true)}
         >
-          {selected.length < 2 ? 'Kies minstens 2 spelers' : `▶ Start potje (${selected.length} spelers)`}
+          {selected.length < 2 ? 'Kies minstens 2 spelers' : `Start potje met ${selected.length}`}
         </Button>
       </Page>
     </>
