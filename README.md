@@ -15,6 +15,7 @@ Mobiele scorekeeper voor Yaniv. Hij is installeerbaar als app (PWA), werkt offli
 - **Regelsets**: de standaardsets *Thuisregels* en *Officieel*, plus je eigen benoemde sets.
 - **Regels per potje vastgelegd**: tijdens een potje aanpasbaar, waarna de stand opnieuw wordt berekend.
 - **Ronde-invoer in drie stappen**: wie riep Yaniv, was het een Assaf, en de handpunten. Met een live preview van de punten en controles op de regels.
+- **Stijl**: strak scorebord-ontwerp zonder emoji; volgt automatisch de dag/nachtstand van je telefoon (of vast via Instellingen).
 - **Correcties**: de laatste ronde ongedaan maken, elke ronde achteraf aanpassen of verwijderen, en een potje handmatig beëindigen.
 - **Live meekijken**: deel de 6-letter spelcode of de link. Andere telefoons zien elke ronde direct, inclusief de animaties.
 - **Bewerk-link**: hiermee draag je het scorebijhouden over aan een andere telefoon.

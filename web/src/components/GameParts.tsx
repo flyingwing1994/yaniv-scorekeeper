@@ -2,40 +2,42 @@ import { useMemo, useState } from 'react';
 import type { GamePlayer, GameState, RoundDraft } from '../lib/scoring';
 import { checkRound, isAssafRound, roundScores } from '../lib/scoring';
 import type { Round, Rules } from '../lib/types';
-import { Avatar, Button, Label, NumberInput } from './ui';
+import { Button, Label, NumberInput, Segmented, Swatch } from './ui';
 
-export function StandingsGrid({ state, rules }: { state: GameState; rules: Rules }) {
+export function Standings({ state, rules }: { state: GameState; rules: Rules }) {
   const started = state.rounds.length > 0;
+  const limit = rules.scoreLimit;
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+    <ol>
       {state.standings.map((p, idx) => {
-        const leader = idx === 0 && started && !p.isOut;
-        const left = rules.scoreLimit > 0 ? rules.scoreLimit - p.score + (rules.eliminationBoundary === 'over' ? 0 : -1) : null;
+        const lead = idx === 0 && started && !p.isOut;
+        const pct = limit > 0 ? Math.min(100, (p.score / limit) * 100) : 0;
+        const left = limit > 0 ? limit - p.score - (rules.eliminationBoundary === 'over' ? 0 : 1) : null;
+        const danger = left !== null && !p.isOut && left <= 20;
         return (
-          <div
-            key={p.id}
-            className={`rounded-xl border p-3 ${
-              p.isOut ? 'border-rose-900/40 bg-rose-950/20 opacity-60' : leader ? 'border-amber-500/50 bg-amber-500/15' : 'border-slate-800 bg-slate-950'
-            }`}
-          >
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>#{idx + 1}{leader ? ' 👑' : ''}</span>
-              {p.isOut ? <span className="font-bold text-rose-400">💀 Af (R{p.eliminatedRound})</span> : <span>🏆 {p.roundsWon}</span>}
+          <li key={p.id} className={`grid min-h-[52px] grid-cols-[26px_1fr_auto] items-center gap-2 border-b border-line-soft ${p.isOut ? 'opacity-45' : ''}`}>
+            <span className="font-mono text-xs text-faint">{String(idx + 1).padStart(2, '0')}</span>
+            <div className="min-w-0 py-2">
+              <div className="flex items-center gap-2">
+                <Swatch color={p.color} size={8} />
+                <span className={`truncate text-base font-semibold ${p.isOut ? 'line-through' : ''}`}>{p.name}</span>
+                {p.isOut && <span className="font-mono text-[11px] text-danger">AF R{p.eliminatedRound}</span>}
+                {!p.isOut && started && <span className="font-mono text-[11px] text-faint">{p.roundsWon}× gewonnen</span>}
+              </div>
+              {limit > 0 && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="relative h-[3px] flex-1 bg-raised">
+                    <span className={`absolute inset-y-0 left-0 ${lead ? 'bg-accent' : danger ? 'bg-danger' : 'bg-fg'}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  {!p.isOut && <span className={`w-14 text-right font-mono text-[10px] ${danger ? 'text-danger' : 'text-faint'}`}>nog {Math.max(0, left ?? 0)}</span>}
+                </div>
+              )}
             </div>
-            <div className="mt-1 flex items-center gap-2">
-              <Avatar name={p.name} color={p.color} size={22} />
-              <span className={`truncate text-sm font-bold ${p.isOut ? 'text-slate-400 line-through' : 'text-white'}`}>{p.name}</span>
-            </div>
-            <div className="mt-1 text-2xl font-black text-white">
-              {p.score} <span className="text-xs font-normal text-slate-500">pt</span>
-            </div>
-            {left !== null && !p.isOut && (
-              <div className={`text-[11px] ${left <= 20 ? 'font-bold text-rose-300' : 'text-slate-500'}`}>nog {Math.max(0, left)} pt marge</div>
-            )}
-          </div>
+            <span className={`min-w-[56px] text-right text-[28px] font-extrabold tracking-[-0.03em] ${lead ? 'text-accent' : ''}`}>{p.score}</span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
@@ -82,104 +84,80 @@ export function RoundForm({
 
   const caller = draft.callerId;
   const isAssaf = Boolean(draft.assafById && draft.assafById !== caller);
+  const nameOf = (id: string | null) => alive.find(p => p.id === id)?.name ?? '';
 
   return (
-    <div className="space-y-5">
-      <div>
-        <Label>1 · Wie riep Yaniv?</Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {alive.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => update({ callerId: p.id, assafById: draft.assafById === p.id ? null : draft.assafById })}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold ${
-                caller === p.id ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200' : 'border-slate-800 bg-slate-950 text-slate-300'
-              }`}
-            >
-              <Avatar name={p.name} color={p.color} size={22} />
-              <span className="truncate">{p.name}</span>
-            </button>
-          ))}
-        </div>
+    <div>
+      <div className="flex items-baseline justify-between pb-2 pt-6">
+        <Label>Yaniv geroepen door</Label>
       </div>
+      <Segmented
+        value={caller ?? ''}
+        onChange={id => update({ callerId: id, assafById: draft.assafById === id ? null : draft.assafById })}
+        options={alive.map(p => ({ value: p.id, label: p.name }))}
+        columns={alive.length <= 4 ? alive.length : alive.length <= 6 ? 3 : 4}
+      />
 
       {caller && (
-        <div>
-          <Label>2 · Assaf? (iemand had evenveel of minder)</Label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => update({ assafById: null })}
-              className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${!isAssaf ? 'border-indigo-400 bg-indigo-600 text-white' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
-            >
-              Geen Assaf
-            </button>
-            {alive.filter(p => p.id !== caller).map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => update({ assafById: p.id })}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${draft.assafById === p.id ? 'border-amber-400 bg-amber-500 text-slate-950' : 'border-slate-800 bg-slate-950 text-slate-400'}`}
-              >
-                ⚡ {p.name}
-              </button>
-            ))}
+        <>
+          <div className="flex items-baseline justify-between pb-2 pt-5">
+            <Label>Assaf</Label>
+            <span className="text-[11px] text-faint">iemand met evenveel of minder punten</span>
           </div>
+          <Segmented
+            value={draft.assafById ?? ''}
+            onChange={id => update({ assafById: id || null })}
+            options={[{ value: '', label: 'Geen' }, ...alive.filter(p => p.id !== caller).map(p => ({ value: p.id, label: p.name, tone: 'accent' as const }))]}
+            columns={alive.length <= 4 ? alive.length : alive.length <= 6 ? 3 : 4}
+          />
           {isAssaf && (
-            <p className="mt-2 text-xs text-amber-200">
-              {alive.find(p => p.id === caller)?.name} krijgt hand + {rules.assafPenalty} straf;{' '}
-              {alive.find(p => p.id === draft.assafById)?.name} krijgt {rules.assafWinnerGetsHandPoints ? 'eigen hand' : '0 pt'}.
+            <p className="mt-2 text-[13px] text-muted">
+              <b className="text-fg">{nameOf(caller)}</b> krijgt hand + {rules.assafPenalty}. <b className="text-fg">{nameOf(draft.assafById)}</b> krijgt {rules.assafWinnerGetsHandPoints ? 'de eigen hand' : '0 punten'}.
             </p>
           )}
-        </div>
-      )}
 
-      {caller && (
-        <div className="space-y-2">
-          <Label>3 · Punten in de hand</Label>
+          <div className="flex items-baseline justify-between pb-1 pt-5">
+            <Label>Punten in de hand</Label>
+            {preview && <span className="text-[11px] text-faint">rechts: erbij deze ronde</span>}
+          </div>
           {alive.map(p => {
             const isCaller = p.id === caller;
             const optional = isCaller && !isAssaf;
+            const note = isCaller
+              ? isAssaf ? `riep Yaniv, +${rules.assafPenalty}` : rules.yanivLimitMode !== 'off' ? `riep Yaniv, max ${rules.yanivCallLimit}` : 'riep Yaniv'
+              : draft.assafById === p.id ? 'riep Assaf' : '';
             return (
-              <div key={p.id} className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 ${isCaller ? 'border-emerald-800/50 bg-emerald-950/25' : 'border-slate-800 bg-slate-950'}`}>
+              <div key={p.id} className="flex min-h-14 items-center justify-between gap-3 border-b border-line-soft">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Avatar name={p.name} color={p.color} size={28} />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-bold text-white">{p.name}</div>
-                    <div className="text-[11px] text-slate-500">
-                      {isCaller ? (isAssaf ? '🗣 riep Yaniv, ⚡ geassaft' : `🗣 riep Yaniv${rules.yanivLimitMode !== 'off' ? ` (≤ ${rules.yanivCallLimit}), optioneel` : ''}`) : draft.assafById === p.id ? '⚡ riep Assaf' : ''}
-                      {preview && preview[p.id] !== undefined && <span className="ml-1 text-slate-300">→ +{preview[p.id]}</span>}
-                    </div>
-                  </div>
+                  <Swatch color={p.color} size={8} />
+                  <span className="truncate text-[15px] font-semibold">{p.name}</span>
+                  {note && <span className={`font-mono text-[11px] ${isCaller && isAssaf ? 'text-accent' : 'text-muted'}`}>{note}</span>}
                 </div>
-                <NumberInput
-                  ariaLabel={`Punten ${p.name}`}
-                  className="w-24"
-                  placeholder={optional ? '–' : '0'}
-                  max={rules.maxHandPoints}
-                  value={draft.hands[p.id] ?? ''}
-                  onChange={v => update({ hands: { ...draft.hands, [p.id]: v } })}
-                />
+                <div className="flex items-center gap-3">
+                  {preview && preview[p.id] !== undefined && <span className="w-10 text-right font-mono text-xs text-muted">+{preview[p.id]}</span>}
+                  <NumberInput
+                    ariaLabel={`Punten ${p.name}`}
+                    className="w-[72px]"
+                    placeholder={optional ? '–' : '0'}
+                    max={rules.maxHandPoints}
+                    value={draft.hands[p.id] ?? ''}
+                    onChange={v => update({ hands: { ...draft.hands, [p.id]: v } })}
+                  />
+                </div>
               </div>
             );
           })}
-        </div>
+        </>
       )}
 
       {showIssues && (check.errors.length > 0 || check.warnings.length > 0) && (
-        <div className="space-y-1 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs">
-          {check.errors.map(e => <div key={e} className="text-rose-300">⛔ {e}</div>)}
-          {check.warnings.map(w => <div key={w} className="text-amber-200">⚠️ {w}</div>)}
+        <div className="mt-4 space-y-1.5 border-l-2 border-accent pl-3 text-[13px]">
+          {check.errors.map(e => <p key={e} className="text-danger">{e}</p>)}
+          {check.warnings.map(w => <p key={w} className="text-fg">{w}</p>)}
         </div>
       )}
 
-      <Button
-        className="w-full py-3.5 text-base"
-        variant={confirming ? 'gold' : 'primary'}
-        disabled={!caller}
-        onClick={submit}
-      >
+      <Button className="mt-5 w-full py-4 text-[15px]" disabled={!caller} onClick={submit}>
         {!caller ? 'Kies eerst wie Yaniv riep' : confirming ? 'Toch opslaan' : submitLabel}
       </Button>
       {extra}
@@ -194,53 +172,53 @@ export function HistoryTable({
   players: GamePlayer[];
   onEdit?: (roundIndex: number) => void;
 }) {
-  if (state.rounds.length === 0) return <p className="py-6 text-center text-sm text-slate-500">Nog geen rondes gespeeld.</p>;
+  if (state.rounds.length === 0) return <p className="py-10 text-center text-sm text-muted">Nog geen rondes gespeeld.</p>;
   return (
     <div className="-mx-4 overflow-x-auto px-4">
-      <table className="w-full min-w-max border-separate border-spacing-0 text-left text-xs">
+      <table className="w-full min-w-max border-collapse text-left">
         <thead>
-          <tr className="text-slate-400">
-            <th className="sticky left-0 z-10 bg-slate-900 py-2 pr-2">#</th>
+          <tr className="border-b border-line">
+            <th className="sticky left-0 z-10 bg-bg py-2 pr-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Ronde</th>
             {players.map(p => (
-              <th key={p.id} className="min-w-[64px] px-1 py-2 text-center">
-                <div className="flex flex-col items-center gap-1">
-                  <Avatar name={p.name} color={p.color} size={20} />
-                  <span className="max-w-[72px] truncate">{p.name}</span>
-                </div>
+              <th key={p.id} className="min-w-[60px] px-1 py-2 text-right">
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold">
+                  <Swatch color={p.color} size={6} />
+                  <span className="max-w-[64px] truncate">{p.name}</span>
+                </span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {state.rounds.map((r, idx) => (
-            <tr key={r.id} className="border-t border-slate-800">
-              <td className="sticky left-0 z-10 border-t border-slate-800 bg-slate-900 py-2 pr-2 font-bold text-slate-400">
+            <tr key={r.id} className="border-b border-line-soft">
+              <td className="sticky left-0 z-10 bg-bg py-2 pr-3 align-top">
                 {onEdit ? (
-                  <button onClick={() => onEdit(idx)} className="rounded-md border border-slate-700 px-1.5 py-0.5 text-slate-300" aria-label={`Ronde ${r.roundNumber} bewerken`}>
-                    R{r.roundNumber} ✎
+                  <button onClick={() => onEdit(idx)} className="font-mono text-xs text-fg underline decoration-line underline-offset-4" aria-label={`Ronde ${r.roundNumber} bewerken`}>
+                    R{String(r.roundNumber).padStart(2, '0')}
                   </button>
-                ) : `R${r.roundNumber}`}
-                {isAssafRound(r) && <div className="text-[10px] text-amber-300">⚡ Assaf</div>}
+                ) : <span className="font-mono text-xs">R{String(r.roundNumber).padStart(2, '0')}</span>}
+                {isAssafRound(r) && <div className="font-mono text-[10px] text-accent">assaf</div>}
               </td>
               {players.map(p => {
                 const played = r.scores[p.id] !== undefined;
-                const caller = r.callerId === p.id;
                 const winner = r.winnerId === p.id;
+                const penalized = isAssafRound(r) && r.callerId === p.id;
                 return (
-                  <td key={p.id} className={`border-t border-slate-800 px-1 py-2 text-center ${winner ? 'bg-emerald-500/10' : ''}`}>
+                  <td key={p.id} className="px-1 py-2 text-right align-top">
                     {played ? (
                       <>
-                        <div className={`font-bold ${winner ? 'text-emerald-300' : caller ? 'text-rose-300' : 'text-slate-200'}`}>
-                          {winner ? '🏆 ' : ''}+{r.scores[p.id]}
+                        <div className={`text-[15px] font-bold ${winner ? 'text-accent' : penalized ? 'text-danger' : ''}`}>
+                          {winner && r.scores[p.id] === 0 ? 'Y' : `+${r.scores[p.id]}`}
                         </div>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="font-mono text-[10px] text-faint">
+                          {r.bonusEvents[p.id] && <span className="mr-1 text-fg">{r.bonusEvents[p.id]}</span>}
                           {r.afterTotals[p.id]}
-                          {r.bonusEvents[p.id] && <span className="ml-0.5 text-indigo-300">{r.bonusEvents[p.id]}</span>}
-                          {r.newlyEliminated.includes(p.id) && ' 💀'}
+                          {r.newlyEliminated.includes(p.id) && <span className="ml-1 text-danger">af</span>}
                         </div>
                       </>
                     ) : (
-                      <span className="text-slate-700">–</span>
+                      <span className="text-faint">·</span>
                     )}
                   </td>
                 );
@@ -249,6 +227,7 @@ export function HistoryTable({
           ))}
         </tbody>
       </table>
+      <p className="mt-3 text-[11px] text-faint">Y = won de ronde met 0 punten. Oranje = rondewinnaar, rood = geassaft. Tik op een ronde om die aan te passen.</p>
     </div>
   );
 }

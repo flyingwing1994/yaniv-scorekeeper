@@ -1,5 +1,5 @@
 // Service worker: app-shell offline beschikbaar maken. API-verkeer gaat altijd naar het netwerk.
-const CACHE = 'yaniv-shell-v2';
+const CACHE = 'yaniv-shell-v3';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 
 // Haal ook de gehashte JS/CSS-bundels uit index.html op, zodat de app direct na de eerste keer offline werkt.
@@ -9,6 +9,12 @@ async function precache() {
   const html = await (await cache.match('/')).text();
   const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map(m => m[1]);
   await cache.addAll(assets);
+  // Lettertypes (alleen Latijnse subsets) uit de CSS-bundel, zodat de typografie ook offline klopt.
+  for (const css of assets.filter(a => a.endsWith('.css'))) {
+    const text = await (await cache.match(css)).text();
+    const fonts = [...text.matchAll(/url\((\/assets\/[^)]*latin[^)]*\.woff2)\)/g)].map(m => m[1]);
+    await cache.addAll([...new Set(fonts)]);
+  }
 }
 
 self.addEventListener('install', event => {

@@ -3,6 +3,8 @@ import { HOUSE_RULES, normalizeRules } from './rules';
 import { computeGameState, newGameCode, newId, newSecret } from './scoring';
 import type { Game, Library, Player, RulePreset, Rules } from './types';
 
+export type ThemePref = 'system' | 'light' | 'dark';
+
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error' | 'pin';
 
 export interface AppState {
@@ -14,6 +16,7 @@ export interface AppState {
   lastRules: Rules;
   lastPlayerIds: string[];
   pin: string;
+  theme: ThemePref;
   dirtyLibrary: boolean;
   dirtyGames: string[];
   sync: { status: SyncStatus; message?: string; lastSync?: number; pinRequired?: boolean };
@@ -37,6 +40,7 @@ function emptyState(): AppState {
     lastRules: HOUSE_RULES,
     lastPlayerIds: [],
     pin: '',
+    theme: 'system',
     dirtyLibrary: false,
     dirtyGames: [],
     sync: { status: 'idle' }
@@ -277,6 +281,32 @@ export function adoptEditToken(id: string, token: string) {
 
 export function setPin(pin: string) {
   setState(s => ({ pin, sync: { ...s.sync, status: 'idle', message: undefined } }), { sync: true });
+}
+
+// ---------- Thema ----------
+
+const THEME_COLORS = { light: '#f6f6f4', dark: '#0e0e0e' };
+
+export function applyTheme(pref: ThemePref = state.theme) {
+  const root = document.documentElement;
+  if (pref === 'system') delete root.dataset.theme;
+  else root.dataset.theme = pref;
+  // Statusbalk-kleur: bij 'system' kiest de media-query in index.html, anders beide tags gelijk zetten.
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+    const forDark = m.getAttribute('media')?.includes('dark');
+    const color = pref === 'system' ? (forDark ? THEME_COLORS.dark : THEME_COLORS.light) : THEME_COLORS[pref];
+    m.setAttribute('content', color);
+  });
+}
+
+export function setTheme(theme: ThemePref) {
+  setState({ theme });
+  applyTheme(theme);
+}
+
+export function watchSystemTheme() {
+  applyTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
 }
 
 // ---------- Synchronisatie ----------

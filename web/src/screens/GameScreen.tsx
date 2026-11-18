@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { EventAnimation, useRoundAnimation } from '../components/EventAnimation';
-import { draftFromRound, HistoryTable, RoundForm, StandingsGrid } from '../components/GameParts';
+import { draftFromRound, HistoryTable, RoundForm, Standings } from '../components/GameParts';
 import { RulesEditor } from '../components/RulesEditor';
-import { Button, Card, Modal, Page, TopBar } from '../components/ui';
+import { Button, Icon, IconButton, Modal, Page, Segmented, TopBar } from '../components/ui';
 import { useLiveGame } from '../lib/live';
 import { describeRules } from '../lib/rules';
 import { gameUrl, navigate } from '../lib/router';
@@ -20,6 +20,8 @@ async function share(url: string, title: string) {
   }
   try { await navigator.clipboard.writeText(url); return 'copied'; } catch { return 'failed'; }
 }
+
+const LIVE_LABEL = { live: 'Live', offline: 'Offline', missing: 'Verwijderd', connecting: 'Verbinden' } as const;
 
 export function GameScreen({ id, editKey }: { id: string; editKey?: string }) {
   const game = useStore(s => s.games[id]);
@@ -63,10 +65,8 @@ export function GameScreen({ id, editKey }: { id: string; editKey?: string }) {
   if (!game || !state) {
     return (
       <>
-        <TopBar title={`Potje ${id}`} back="/" />
-        <Page>
-          <Card><p className="text-center text-sm text-slate-400">{loadError ?? 'Potje laden…'}</p></Card>
-        </Page>
+        <TopBar title="Potje" kicker={id} back="/" />
+        <Page><p className="py-10 text-center text-sm text-muted">{loadError ?? 'Potje laden…'}</p></Page>
       </>
     );
   }
@@ -84,144 +84,142 @@ export function GameScreen({ id, editKey }: { id: string; editKey?: string }) {
       return !out || out >= idx + 1;
     });
 
+  const tabs: { value: Tab; label: string }[] = [
+    ...(canEdit ? [{ value: 'round' as const, label: state.isOver ? 'Uitslag' : 'Invoeren' }] : []),
+    { value: 'history', label: `Historie ${game.rounds.length}` },
+    { value: 'rules', label: 'Regels' }
+  ];
+
   return (
     <div className="min-h-screen">
       <EventAnimation event={event} />
       <TopBar
-        title={<>Potje <span className="font-mono tracking-wider text-indigo-300">{id}</span>{!state.isOver && <span className="text-slate-400"> · R{roundNo}</span>}</>}
+        kicker={<>{state.isOver ? 'Afgelopen' : `Ronde ${roundNo}`} · <span className="font-mono text-accent">{id}</span></>}
+        title="Stand"
         back="/"
         right={
           <>
-            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => doShare(false)}>📲 Delen</Button>
-            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => setMenu(true)} aria-label="Menu">⋯</Button>
+            <IconButton icon="share" label="Meekijk-link delen" onClick={() => doShare(false)} />
+            <IconButton icon="more" label="Menu" onClick={() => setMenu(true)} />
           </>
         }
       />
       <Page>
         {!canEdit && (
-          <div className="flex items-center justify-between rounded-xl border border-sky-800/50 bg-sky-950/30 px-3 py-2 text-xs text-sky-200">
-            <span>👀 Je kijkt mee. Alleen de scorebijhouder kan invoeren.</span>
-            <span className="font-bold">{live === 'live' ? '● Live' : live === 'offline' ? '○ Offline' : live === 'missing' ? 'Verwijderd' : '… Verbinden'}</span>
+          <div className="mt-4 flex items-center justify-between border border-line px-3 py-2 text-[13px]">
+            <span className="text-muted">Je kijkt mee. Alleen de scorebijhouder voert in.</span>
+            <span className="flex items-center gap-1.5 font-mono text-xs">
+              <span className={`h-1.5 w-1.5 ${live === 'live' ? 'bg-accent' : 'bg-faint'}`} />
+              {LIVE_LABEL[live]}
+            </span>
           </div>
         )}
 
-        <Card><StandingsGrid state={state} rules={game.rules} /></Card>
+        <div className="pt-2">
+          <Standings state={state} rules={game.rules} />
+        </div>
 
-        <div className="flex rounded-xl border border-slate-800 bg-slate-900 p-1">
-          {([
-            ...(canEdit ? [['round', state.isOver ? 'Uitslag' : 'Ronde invoeren']] : []),
-            ['history', `Historie (${game.rounds.length})`],
-            ['rules', 'Regels']
-          ] as [Tab, string][]).map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-lg py-2 text-sm font-bold ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}>
-              {label}
-            </button>
-          ))}
+        <div className="pt-6">
+          <Segmented value={tab} onChange={setTab} options={tabs} />
         </div>
 
         {tab === 'round' && canEdit && (
-          <Card>
-            {state.isOver ? (
-              <div className="space-y-4 py-4 text-center">
-                <div className="text-5xl">👑</div>
-                <h3 className="text-2xl font-black text-white">
-                  {state.champion ? `${state.champion.name} wint met ${state.champion.score} pt!` : 'Potje beëindigd'}
-                </h3>
-                <div className="flex flex-col justify-center gap-2 sm:flex-row">
-                  <Button onClick={() => {
-                    const newId = createGame(game.players.map(p => p.id), game.rules, game.players);
-                    navigate(`/g/${newId}`);
-                  }}>
-                    Nieuw potje, zelfde spelers
-                  </Button>
-                  {game.endedManually && (
-                    <Button variant="secondary" onClick={() => updateGame(id, g => ({ ...g, endedManually: false }))}>Verder spelen</Button>
-                  )}
-                  <Button variant="gold" onClick={() => navigate('/')}>Beginscherm</Button>
-                </div>
-              </div>
-            ) : (
-              <RoundForm
-                key={game.rounds.length}
-                alive={state.alive}
-                rules={game.rules}
-                submitLabel={`Ronde ${roundNo} opslaan`}
-                onSubmit={round => updateGame(id, g => ({ ...g, rounds: [...g.rounds, round] }))}
-                extra={game.rounds.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    className="w-full text-xs"
-                    onClick={() => {
-                      if (confirm(`Ronde ${game.rounds.length} ongedaan maken?`)) updateGame(id, g => ({ ...g, rounds: g.rounds.slice(0, -1) }));
-                    }}
-                  >
-                    ↶ Laatste ronde ongedaan maken
-                  </Button>
+          state.isOver ? (
+            <div className="pt-8">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">Winnaar</div>
+              <h2 className="mt-1 text-[40px] font-extrabold leading-none tracking-[-0.03em]">{state.champion?.name ?? 'Potje beëindigd'}</h2>
+              {state.champion && <p className="mt-2 font-mono text-sm text-muted">{state.champion.score} punten na {game.rounds.length} rondes</p>}
+              <div className="mt-6 grid gap-2">
+                <Button onClick={() => navigate(`/g/${createGame(game.players.map(p => p.id), game.rules, game.players)}`)}>
+                  Nieuw potje, zelfde spelers
+                </Button>
+                {game.endedManually && (
+                  <Button variant="secondary" onClick={() => updateGame(id, g => ({ ...g, endedManually: false }))}>Verder spelen</Button>
                 )}
-              />
-            )}
-          </Card>
+                <Button variant="secondary" onClick={() => navigate('/')}>Naar beginscherm</Button>
+              </div>
+            </div>
+          ) : (
+            <RoundForm
+              key={game.rounds.length}
+              alive={state.alive}
+              rules={game.rules}
+              submitLabel={`Ronde ${roundNo} opslaan`}
+              onSubmit={round => updateGame(id, g => ({ ...g, rounds: [...g.rounds, round] }))}
+              extra={game.rounds.length > 0 && (
+                <Button
+                  variant="ghost"
+                  className="mt-2 w-full"
+                  onClick={() => {
+                    if (confirm(`Ronde ${game.rounds.length} ongedaan maken?`)) updateGame(id, g => ({ ...g, rounds: g.rounds.slice(0, -1) }));
+                  }}
+                >
+                  <Icon name="undo" size={16} /> Laatste ronde ongedaan maken
+                </Button>
+              )}
+            />
+          )
         )}
 
         {tab === 'history' && (
-          <Card>
+          <div className="pt-4">
             <HistoryTable state={state} players={game.players} onEdit={canEdit ? setEditIdx : undefined} />
-          </Card>
+          </div>
         )}
 
         {tab === 'rules' && (
-          <Card className="space-y-3">
-            <ul className="space-y-1.5 text-sm text-slate-200">
-              {describeRules(game.rules).map(l => <li key={l}>• {l}</li>)}
+          <div className="pt-4">
+            <ul>
+              {describeRules(game.rules).map(l => <li key={l} className="border-b border-line-soft py-3 text-[15px]">{l}</li>)}
             </ul>
-            {canEdit && <Button variant="secondary" className="w-full" onClick={() => setEditRules(game.rules)}>Regels van dit potje aanpassen</Button>}
-          </Card>
+            {canEdit && <Button variant="secondary" className="mt-4 w-full" onClick={() => setEditRules(game.rules)}>Regels van dit potje aanpassen</Button>}
+          </div>
         )}
       </Page>
 
-      <Modal open={menu} onClose={() => setMenu(false)} title={`Potje ${id}`}>
-        <div className="space-y-2">
-          <Button variant="secondary" className="w-full" onClick={() => doShare(false)}>📲 Meekijk-link delen</Button>
+      <Modal open={menu} onClose={() => setMenu(false)} title={<>Potje <span className="font-mono text-accent">{id}</span></>}>
+        <div className="grid gap-2">
+          <Button variant="secondary" onClick={() => doShare(false)}>Meekijk-link delen</Button>
           {canEdit && (
             <>
-              <Button variant="secondary" className="w-full" onClick={() => doShare(true)}>✍️ Bewerk-link delen (overdragen)</Button>
-              <p className="px-1 text-[11px] text-slate-500">Met de bewerk-link kan een ander toestel ook scores invoeren. Deel die alleen met de scorebijhouder.</p>
+              <Button variant="secondary" onClick={() => doShare(true)}>Bewerk-link delen</Button>
+              <p className="pb-2 text-xs text-muted">Met de bewerk-link kan een ander toestel ook scores invoeren. Deel die alleen met wie de score overneemt.</p>
               {!state.isOver && (
-                <Button variant="secondary" className="w-full" onClick={() => {
+                <Button variant="secondary" onClick={() => {
                   if (confirm('Potje nu beëindigen? De speler met de laagste score wint.')) {
                     updateGame(id, g => ({ ...g, endedManually: true }));
                     setMenu(false);
                     setTab('round');
                   }
-                }}>🏁 Potje beëindigen</Button>
+                }}>Potje beëindigen</Button>
               )}
-              <Button variant="danger" className="w-full" onClick={async () => {
+              <Button variant="danger" onClick={async () => {
                 if (confirm('Dit potje definitief verwijderen, ook voor meekijkers?')) {
                   await deleteGameEverywhere(id);
                   navigate('/');
                 }
-              }}>🗑 Potje verwijderen</Button>
+              }}>Potje verwijderen</Button>
             </>
           )}
-          <Button variant="ghost" className="w-full" onClick={() => navigate('/')}>⌂ Beginscherm</Button>
+          <Button variant="ghost" onClick={() => navigate('/')}>Naar beginscherm</Button>
         </div>
       </Modal>
 
       <Modal open={editRules !== null} onClose={() => setEditRules(null)} title="Regels van dit potje">
         {editRules && (
-          <div className="space-y-4">
-            <p className="text-xs text-amber-200">Let op: alle standen worden met de nieuwe regels opnieuw berekend.</p>
+          <div>
+            <p className="border-l-2 border-accent pl-3 text-[13px]">Alle standen worden met de nieuwe regels opnieuw berekend.</p>
             <RulesEditor rules={editRules} onChange={setEditRules} />
-            <Button className="w-full" onClick={() => { updateGame(id, g => ({ ...g, rules: editRules })); setEditRules(null); }}>Opslaan</Button>
+            <Button className="mt-6 w-full" onClick={() => { updateGame(id, g => ({ ...g, rules: editRules })); setEditRules(null); }}>Opslaan</Button>
           </div>
         )}
       </Modal>
 
       <Modal open={editIdx !== null} onClose={() => setEditIdx(null)} title={editIdx !== null ? `Ronde ${editIdx + 1} aanpassen` : ''}>
         {editIdx !== null && game.rounds[editIdx] && (
-          <div className="space-y-3">
+          <div>
             {game.rounds[editIdx].fixedScores && (
-              <p className="text-xs text-amber-200">Deze ronde komt uit de oude app en heeft geen handpunten. Na opslaan wordt hij opnieuw berekend.</p>
+              <p className="border-l-2 border-accent pl-3 text-[13px]">Deze ronde komt uit de oude app en heeft geen handpunten. Na opslaan wordt hij opnieuw berekend.</p>
             )}
             <RoundForm
               alive={aliveAtRound(editIdx)}
@@ -234,7 +232,7 @@ export function GameScreen({ id, editKey }: { id: string; editKey?: string }) {
                 setEditIdx(null);
               }}
               extra={
-                <Button variant="danger" className="w-full" onClick={() => {
+                <Button variant="danger" className="mt-2 w-full" onClick={() => {
                   if (confirm(`Ronde ${editIdx + 1} verwijderen?`)) {
                     updateGame(id, g => ({ ...g, rounds: g.rounds.filter((_, i) => i !== editIdx) }));
                     setEditIdx(null);
@@ -248,7 +246,7 @@ export function GameScreen({ id, editKey }: { id: string; editKey?: string }) {
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-900 shadow-xl">{toast}</div>
+          <div className="bg-fg px-4 py-2.5 text-sm font-semibold text-bg">{toast}</div>
         </div>
       )}
     </div>

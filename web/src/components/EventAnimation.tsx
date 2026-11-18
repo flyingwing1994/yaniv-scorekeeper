@@ -37,87 +37,58 @@ export function useRoundAnimation(game: Game | undefined, state: GameState | nul
     const ev = eventForLastRound(game, state);
     if (!ev) return;
     setEvent(ev);
-    const t = setTimeout(() => setEvent(null), ev.type === 'champion' ? 4200 : 2700);
+    const t = setTimeout(() => setEvent(null), DURATION[ev.type]);
     return () => clearTimeout(t);
   }, [game, state]);
   return event;
 }
 
-const SYMBOLS: Record<ScreenEvent['type'], string[]> = {
-  round: ['🎉', '🃏', '✨', '💚'],
-  assaf: ['⚡', '🔥', '💥', '😱'],
-  eliminated: ['💀', '🪦', '🔥', '❌'],
-  champion: ['👑', '🏆', '🎉', '⭐']
-};
+const DURATION: Record<ScreenEvent['type'], number> = { round: 2200, assaf: 2600, eliminated: 2800, champion: 4200 };
 
 export function EventAnimation({ event }: { event: ScreenEvent | null }) {
   if (!event) return null;
-  const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const particles = reduced ? [] : Array.from({ length: 28 }, (_, i) => ({
-    id: i,
-    left: `${(i * 3.7) % 100}%`,
-    delay: `${(i % 7) * 0.08}s`,
-    duration: `${1.6 + (i % 5) * 0.25}s`,
-    size: 16 + (i % 4) * 6
-  }));
+  const dur = { '--dur': `${DURATION[event.type]}ms` } as React.CSSProperties;
+
+  let kicker = '';
+  let title = '';
+  let detail = '';
+  let tone = 'text-fg';
+  switch (event.type) {
+    case 'round':
+      kicker = `Ronde ${event.roundNumber}`;
+      title = `Yaniv: ${event.winner}`;
+      detail = event.bonuses.length ? `Bonus ${event.bonuses.join(', ')}` : '';
+      break;
+    case 'assaf':
+      kicker = 'Assaf';
+      title = `${event.winner} pakt ${event.victim}`;
+      detail = `${event.victim} krijgt ${event.penalty} strafpunten`;
+      tone = 'text-accent';
+      break;
+    case 'eliminated':
+      kicker = `Over de ${event.limit}`;
+      title = `${event.names.join(' en ')} ${event.names.length > 1 ? 'liggen' : 'ligt'} eruit`;
+      tone = 'text-danger';
+      break;
+    case 'champion':
+      kicker = 'Potje afgelopen';
+      title = `${event.name} wint`;
+      detail = `Eindscore ${event.score}`;
+      tone = 'text-accent';
+      break;
+  }
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-4" aria-live="polite">
-      {event.type === 'assaf' && <div className="anim-flash absolute inset-0 bg-amber-500" />}
-      {event.type === 'eliminated' && <div className="anim-flash absolute inset-0 bg-rose-600" />}
-      {event.type === 'champion' && <div className="anim-flash absolute inset-0 bg-gradient-to-t from-amber-500/30 via-transparent to-amber-400/20" />}
-      {event.type === 'round' && <div className="anim-flash absolute inset-0 bg-emerald-500/20" />}
-
-      {particles.map(p => (
-        <div
-          key={p.id}
-          className="absolute select-none"
-          style={{ left: p.left, top: '-40px', fontSize: p.size, animation: `particleDrop ${p.duration} ease-in ${p.delay} forwards` }}
-        >
-          {SYMBOLS[event.type][p.id % 4]}
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center px-4" aria-live="polite" style={dur}>
+      <div className="anim-overlay absolute inset-0 bg-overlay" />
+      <div className="anim-banner relative w-full max-w-md border border-line bg-bg px-6 pb-5 pt-5">
+        <div className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${tone}`}>{kicker}</div>
+        <div className="mt-1 text-[34px] font-extrabold leading-[1.05] tracking-[-0.03em]">{title}</div>
+        {detail && <div className="mt-2 font-mono text-[13px] text-muted">{detail}</div>}
+        <div className="absolute inset-x-0 bottom-0 h-[3px] bg-raised">
+          <div className={`anim-stripe h-full ${event.type === 'eliminated' ? 'bg-danger' : 'bg-accent'}`} />
         </div>
-      ))}
-
-      {event.type === 'round' && (
-        <div className="anim-banner-fly flex flex-col items-center rounded-3xl border-2 border-emerald-400 bg-emerald-950/90 px-8 py-5 text-center shadow-[0_0_60px_rgba(16,185,129,0.6)] backdrop-blur-md">
-          <div className="mb-1 animate-bounce text-4xl">🏆</div>
-          <span className="text-xs font-black uppercase tracking-widest text-emerald-300">Ronde {event.roundNumber}</span>
-          <div className="text-3xl font-black tracking-tight text-white">YANIV VOOR {event.winner.toUpperCase()}!</div>
-          {event.bonuses.length > 0 && (
-            <div className="mt-2 rounded-full border border-indigo-400 bg-indigo-500/30 px-3 py-1 text-xs font-bold text-indigo-200">
-              ✨ Bonus: {event.bonuses.join(', ')}
-            </div>
-          )}
-        </div>
-      )}
-
-      {event.type === 'assaf' && (
-        <div className="anim-banner-fly anim-shake flex flex-col items-center rounded-3xl border-2 border-amber-400 bg-amber-950/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(245,158,11,0.75)] backdrop-blur-md">
-          <div className="mb-1 animate-bounce text-5xl">⚡</div>
-          <div className="text-4xl font-black tracking-tight text-amber-300">ASSAF!</div>
-          <div className="mt-1 text-base font-extrabold text-white">{event.winner} pakt {event.victim}</div>
-          <div className="mt-1 text-xs font-bold text-rose-300">{event.victim} krijgt +{event.penalty} strafpunten</div>
-        </div>
-      )}
-
-      {event.type === 'eliminated' && (
-        <div className="anim-banner-fly anim-shake flex flex-col items-center rounded-3xl border-2 border-rose-500 bg-rose-950/95 px-8 py-6 text-center shadow-[0_0_80px_rgba(244,63,94,0.8)] backdrop-blur-md">
-          <div className="mb-1 animate-pulse text-5xl">💀</div>
-          <span className="text-xs font-black uppercase tracking-widest text-rose-300">Over de {event.limit} punten</span>
-          <div className="mt-0.5 text-3xl font-black text-white">
-            {event.names.join(' & ').toUpperCase()} {event.names.length > 1 ? 'ZIJN' : 'IS'} AF! 💀
-          </div>
-        </div>
-      )}
-
-      {event.type === 'champion' && (
-        <div className="anim-banner-long flex flex-col items-center rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-amber-900/95 to-slate-950/95 px-10 py-7 text-center shadow-[0_0_90px_rgba(251,191,36,0.85)] backdrop-blur-md">
-          <div className="mb-2 animate-bounce text-6xl">👑</div>
-          <span className="text-xs font-black uppercase tracking-widest text-amber-300">Potje afgelopen</span>
-          <div className="mt-1 text-4xl font-black text-white">{event.name} WINT! 🏆</div>
-          <div className="mt-1 text-sm font-bold text-amber-200">Eindscore: {event.score} punten</div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
