@@ -27,6 +27,7 @@ jobs:
       build: cd web && npm run build
       test: cd web && npm test && cd ../server && npm test
       tests-verplicht: true
+      docker-build: true
 
   review:
     needs: [checks]
