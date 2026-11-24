@@ -51,6 +51,8 @@ cd web && npm install && npm run dev   # Vite dev-server, /api wordt doorgestuur
 cd web && npm test                     # unit-tests voor de puntentelling
 ```
 
+Wijzigingen lopen via issue → branch → pull request, volgens de [werkwijze](https://github.com/flyingwing1994/.github/blob/main/WORKFLOW.md). Elke PR krijgt automatisch checks (geheimen, Semgrep, dependencies, build, tests) en een Claude-review; zonder risicovlag wordt hij daarna automatisch gemerged. Dependabot houdt packages wekelijks bij.
+
 ## Structuur
 
 ```
