@@ -12,16 +12,16 @@ telefoon ──HTTPS──> Cloudflare ──tunnel (uitgaand)──> cloudflare
 - Een server met **Docker** en de **compose-plugin**. Controleer met `docker compose version`.
 - `git` op de server.
 
-## 1. Code op de juiste branch
+## 1. Waar het draait
 
-De nieuwe versie staat nu op branch `ccr-df5d9d55-7qwxuk`. Kies één van twee:
+De productieversie draait op **lxc-docker (CT 102, 192.168.2.53)** in `/opt/yaniv-scorekeeper`, vanaf branch `main`. Inloggen: `ssh pve`, daarna `pct enter 102`.
 
-- **Aanbevolen:** merge die branch naar `main`, via een pull request op GitHub. Dan clone je gewoon `main`.
-- Of clone direct de branch: `git clone -b ccr-df5d9d55-7qwxuk <repo-url> yaniv-scorekeeper`.
+Een nieuwe installatie begint bij stap 2; bijwerken staat onder [Bijwerken naar een nieuwe versie](#bijwerken-naar-een-nieuwe-versie).
 
 ## 2. Ophalen en configureren op de server
 
 ```bash
+cd /opt
 git clone https://github.com/flyingwing1994/yaniv-scorekeeper.git
 cd yaniv-scorekeeper
 cp .env.example .env
@@ -82,13 +82,21 @@ In het Cloudflare-dashboard staat de tunnel dan op **Healthy**.
 
 ## Bijwerken naar een nieuwe versie
 
+Eerst een back-up (zie [Back-up](#back-up)) en de huidige versie noteren, zodat je terug kunt:
+
 ```bash
-cd yaniv-scorekeeper
+cd /opt/yaniv-scorekeeper
+git log --oneline -1          # noteer de commit (terugweg)
+git status --short            # mag alleen back-upbestanden tonen; anders eerst uitzoeken
 git pull
 docker compose --profile tunnel up -d --build
+docker compose ps             # yaniv-scorekeeper moet "healthy" zijn
+docker compose logs yaniv | tail -5
 ```
 
-De data blijft bewaard in het volume `yaniv-data`. Telefoons krijgen de nieuwe versie bij de volgende keer openen; soms is één keer verversen nodig.
+De build draait de webtests; faalt hij, dan blijft de oude versie draaien. De data blijft bewaard in het volume `yaniv-data`. Telefoons krijgen de nieuwe versie bij de volgende keer openen; soms is één keer verversen nodig.
+
+**Terug naar de vorige versie:** `git checkout <genoteerde commit>` en opnieuw `docker compose --profile tunnel up -d --build`. Daarna weer `git checkout main` zodra de fout is opgelost.
 
 ## Back-up
 
