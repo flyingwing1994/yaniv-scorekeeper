@@ -1,5 +1,5 @@
 # --- Build van de PWA ---
-FROM node:22-alpine AS web
+FROM node:26-alpine AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -7,7 +7,7 @@ COPY web/ ./
 RUN npm test && npm run build
 
 # --- Runtime: Node-server zonder dependencies (node:sqlite) ---
-FROM node:22-alpine
+FROM node:26-alpine
 ENV NODE_ENV=production \
     PORT=8080 \
     DATA_DIR=/data
