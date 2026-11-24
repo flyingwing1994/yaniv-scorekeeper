@@ -20,7 +20,7 @@ jobs:
       pull-requests: write
       issues: write
     with:
-      node-version: "22"
+      node-version: "26"
       python-version: ""
       install: cd web && npm ci
       lint: ""             # volgt in het ESLint-issue
