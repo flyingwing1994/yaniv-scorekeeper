@@ -49,6 +49,7 @@ Zonder tunnel (met je eigen reverse proxy op poort 8080): `docker compose up -d 
 cd server && npm start                 # API op :8080 (Node >= 22.13, geen dependencies)
 cd web && npm install && npm run dev   # Vite dev-server, /api wordt doorgestuurd naar :8080
 cd web && npm test                     # unit-tests voor de puntentelling
+cd server && npm test                  # API-tests (start de server met een tijdelijke database)
 ```
 
 Wijzigingen lopen via issue → branch → pull request, volgens de [werkwijze](https://github.com/flyingwing1994/.github/blob/main/WORKFLOW.md). Elke PR krijgt automatisch checks (geheimen, Semgrep, dependencies, build, tests) en een Claude-review; zonder risicovlag wordt hij daarna automatisch gemerged. Dependabot houdt packages wekelijks bij.
@@ -61,6 +62,7 @@ web/      React + TypeScript + Tailwind (Vite), PWA
   src/lib/store.ts     lokale opslag, migratie en sync-wachtrij
   src/lib/live.ts      live volgen via SSE
 server/   Node HTTP-server: REST-API, SSE, statische bestanden, SQLite (node:sqlite)
+  test/                API-tests (node --test, black-box)
 legacy/   de oorspronkelijke versie in één HTML-bestand
 ```
 
