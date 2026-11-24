@@ -7,5 +7,5 @@ Volg `WORKFLOW.md` en `skills/dev-workflow/SKILL.md` uit [flyingwing1994/.github
 
 ## Deze repo
 - `web/`: PWA (React, TypeScript, Vite). `npm run build` (incl. typecheck), `npm test` (vitest).
-- `server/`: Node ≥ 22.13 zonder dependencies (`node:sqlite`); API en statische bestanden.
+- `server/`: Node ≥ 22.13 (Docker en checks: Node 26) zonder dependencies (`node:sqlite`); API en statische bestanden.
 - Deploy: Docker + Cloudflare Tunnel, handmatig (zie `DEPLOY.md`). Geheimen (`APP_PIN`, `TUNNEL_TOKEN`) alleen in `.env`, nooit in git.
