@@ -25,8 +25,8 @@ jobs:
       install: cd web && npm ci
       lint: ""             # volgt in het ESLint-issue
       build: cd web && npm run build
-      test: cd web && npm test
-      tests-verplicht: false   # true zodra het testbasis-issue klaar is
+      test: cd web && npm test && cd ../server && npm test
+      tests-verplicht: true
 
   review:
     needs: [checks]
@@ -36,7 +36,7 @@ jobs:
       pull-requests: write
       issues: write
     with:
-      tests-verplicht: false   # gelijk houden aan checks
+      tests-verplicht: true   # gelijk houden aan checks
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
