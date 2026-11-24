@@ -5,6 +5,7 @@
   "type": "module",
   "engines": { "node": ">=22.13" },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning server.js"
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --test --disable-warning=ExperimentalWarning"
   }
 }
